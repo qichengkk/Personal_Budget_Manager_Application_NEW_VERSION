@@ -128,12 +128,21 @@ public class Budget_Controller {
 		return arraylist;
 	}
 	
-	public boolean delete_expense(int row, int col, int transactionId) throws SQLException{
+	public boolean delete_expense(int row, int expenseID) throws SQLException{
 		
 		if(row != -1)
 		{
-			themodel.deleteTransaction(transactionId);
-			return true;
+			int selection = JOptionPane.showOptionDialog(null, "Are you sure?", 
+    				"Confirmation", JOptionPane.OK_CANCEL_OPTION, 
+    				JOptionPane.QUESTION_MESSAGE, null, null, null);
+    		
+    		if(selection == JOptionPane.OK_OPTION)
+    		{
+    			themodel.deleteTransaction(expenseID);
+    			return true;
+    		}
+    		else
+    			return false;
 		}
 		else{
 			JOptionPane.showMessageDialog(null, "Please select expense you want to delete","Warning",JOptionPane.WARNING_MESSAGE);

@@ -6,6 +6,7 @@ import budget_comp5511.Budget_Controller.Budget_Controller;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Date;
 import java.awt.HeadlessException;
 import java.awt.EventQueue;
 import java.awt.event.ActionListener;
@@ -104,7 +105,6 @@ public class Budget_View {
 	public JButton btnUpdatePurchase;
 	public JButton btnUpdateBill;
 	public JButton btnDeleteexp;
-	public String selectedExp;
 
 	/**
 	 * View constructor
@@ -303,10 +303,33 @@ public class Budget_View {
         btnUpdateexp = new JButton("Update the expense");
         btnUpdateexp.addActionListener(new ActionListener() {
         	public void actionPerformed(ActionEvent e) {
-        		clearMainPanel();
+        		
+        		int row = table.getSelectedRow();
+        		if(row != -1)
+        		{
+        			clearMainPanel();			//clear the main panel
+        			String expenseType = (String) table.getValueAt(row, 1);
+        			System.out.println(expenseType);
+        			if(expenseType.equals("PURCHASE"))
+        			{
+        				purchaseView();
+        				updatePurchaseButtons();
+        			}
+        			else
+        			{
+        				billView();
+        				updateBillButtons();
+        			}
+        		}
+        		else
+        			 errormessages("Please select the expense you want to update!");
+        		
+        		
+        		
+        		/*clearMainPanel();
         		purchaseView();		//open add purchase view
     			updatePurchaseButtons();
-        		/*if(selectedExp == null)
+        		if(selectedExp == null)
         		{
         			JOptionPane.showMessageDialog(null, 
 							"ERROR: Please select an expense!", "ERROR", JOptionPane.ERROR_MESSAGE);
@@ -324,17 +347,7 @@ public class Budget_View {
         btnDeleteexp = new JButton("Delete the expense");
         btnDeleteexp.addActionListener(new ActionListener() {
         	public void actionPerformed(ActionEvent e) {
-        		clearMainPanel();
-        		if(selectedExp == null)
-        		{
-        			JOptionPane.showMessageDialog(null, 
-							"ERROR: Please select an expense!", "ERROR", JOptionPane.ERROR_MESSAGE);
-        		}
-        		else
-        		{
-            		//do the deletion
-        		}
-        		viewExpense();
+        		delete_expense();
         	}
         });
         panelSide.add(btnDeleteexp);
@@ -396,7 +409,7 @@ public class Budget_View {
 		panelMain.add(scrollPane);
 		
 		
-		String[] colNames = {"Expense Type",
+		String[] colNames = {"Expense ID", "Expense Type",
                 "Provider Name",
                 "Location",
                 "Amount",
@@ -416,10 +429,10 @@ public class Budget_View {
 		try
 		{
 			ArrayList<ArrayList<String>> expenses = thecontroller.all_expense(userName);
-			String[][] data = new String[expenses.size()][9];
+			String[][] data = new String[expenses.size()][10];
 			for(int i = 0; i < expenses.size(); i++)
 			{
-				for(int j = 0; j < 9; j++)
+				for(int j = 0; j < 10; j++)
 				{
 					data[i][j] = expenses.get(i).get(j);
 				}
@@ -433,6 +446,10 @@ public class Budget_View {
 		table = new JTable(model);
 		table.setColumnSelectionAllowed(false);
 	    table.setRowSelectionAllowed(true);
+	    
+	    table.getColumn("Expense ID").setPreferredWidth(0);
+	    table.getColumn("Expense ID").setMinWidth(0);
+	    table.getColumn("Expense ID").setMaxWidth(0);
 		scrollPane.setViewportView(table);
 		
 		panelMain.validate();
@@ -1028,6 +1045,18 @@ public class Budget_View {
 		btnUpdatePurchase.setPreferredSize(new Dimension(300,50));
 		panelPurchase.add(btnUpdatePurchase);
 		
+		btnUpdatePurchase.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				try {
+					System.out.println("###########update purchase action###########");
+					addPurchaseAction();
+				} catch (SQLException e1) {
+					// TODO Auto-generated catch block
+					e1.printStackTrace();
+				}
+			}
+		});
+		
 		panelPurchase.validate();
 	}
 	
@@ -1045,6 +1074,18 @@ public class Budget_View {
 		btnUpdateBill = new JButton("Update a Bill Expense");
 		btnUpdateBill.setPreferredSize(new Dimension(300,50));
 		panelBill.add(btnUpdateBill);
+		btnUpdateBill.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				try {
+					System.out.println("###########update bill action###########");
+					addBillAction();
+				} catch (SQLException e1) {
+					// TODO Auto-generated catch block
+					e1.printStackTrace();
+				}
+			}
+		});
+		
 		
 		panelBill.validate();
 	}
@@ -1108,13 +1149,15 @@ public class Budget_View {
 		String type = "Purchase";
 		String pname = getProviderPName();
 		String paddress = getProviderPLocation();
-		String pdate = getPDate();
+		String pdate = "";
+		if(getPDate() != null)
+			pdate = getPDate().toString();
+			
 		String pamount = getPAmount();
 		String pmode = getPMode();
-		String ptime = getPDue();
+		String ptime = getPTime();
 		String pstatus = getPStatus();
 		String pdue_date = getPDue();
-		
 		
 		if(pname.equals("") ||paddress.equals("") || pdate.equals("") ||pamount.equals("") ||pmode.equals("") ||ptime.equals("")|| pstatus.equals("") || pdue_date.equals(""))
 			errormessages("Purchase Fields are empty!");
@@ -1131,12 +1174,13 @@ public class Budget_View {
 			float pamountFloat = Float.valueOf(pamount);
 			try 
 			{
+				System.out.println(pdate);
 				if(thecontroller.add_transaction(userName, pmode, pname,
 					type, paddress, pamountFloat, type,
 					pstatus, "0", pdate + " " +ptime, pdue_date) == true)
 				{
-					JOptionPane.showMessageDialog(null, "You have successfully added purchase transaction!");
 					restoreDefault();
+					JOptionPane.showMessageDialog(null, "You have successfully added purchase transaction!");
 				}
 				else
 				{
@@ -1177,8 +1221,8 @@ public class Budget_View {
 				Float bamountFloat = Float.valueOf(bamount);
 				if(thecontroller.add_transaction(userName, bmode, bname, type, blocation, bamountFloat, type, bstatus, binterval, "0", bdue_date))
 				{
-					JOptionPane.showMessageDialog(null, "Bill has been payed or added!");
 					restoreDefault();
+					JOptionPane.showMessageDialog(null, "Bill has been payed or added!");
 				}
 				else
 				{
@@ -1193,6 +1237,36 @@ public class Budget_View {
 		}
 			
 	}
+	
+	protected void delete_expense(){
+		int row = table.getSelectedRow();
+		if(row != -1)
+		{
+			int expenseID = Integer.parseInt((String)table.getValueAt(row, 0));
+			try {
+				if(thecontroller.delete_expense(row, expenseID) == true){
+					restoreDefault();
+					JOptionPane.showMessageDialog(null, "Expense has been deleted!");
+				}
+			} catch (SQLException e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+			}
+		}
+		else
+			 errormessages("Please select the expense you want to delete!");
+		
+	}
+	
+	protected void updatePurchaseAction()
+	{
+	}
+	
+	protected void updateBillAction()
+	{
+		
+	}
+	
 
 	/**
 	 * Error Message Dialog
@@ -1239,10 +1313,10 @@ public class Budget_View {
 	}
 	/**
 	 * Get the Date for purchase expense
-	 * @return String
+	 * @return Date
 	 */
-	public String getPDate(){
-		return pickerPDate.getDateFormatString();
+	public Date getPDate(){
+		return pickerPDate.getDate();
 	}
 	/**
 	 * Get the Time for purchase expense

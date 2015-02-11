@@ -4,11 +4,8 @@ import java.sql.*;
 import java.util.ArrayList;
 
 public class Budget_Model {
-	private final int USER_TABLE_COLUMNS_NUM = 3;
-	private final int ACCOUNT_TABLE_COLUMNS_NUM = 6;
-	private final int OWNS_TABLE_COLUMNS_NUM = 2;
-	private final int PROVIDER_TABLE_COLUMNS_NUM = 4;
-	private final int TRANSACTIONS_TABLE_COLUMNS_NUM = 9;
+	private static Connection con;
+	// private MessageHashing ms;
 	private String createUser = "CREATE TABLE IF NOT EXISTS User("
 			+ " id INTEGER  PRIMARY KEY,"
 			+ " username VARCHAR(64) NOT NULL UNIQUE,"
@@ -17,7 +14,8 @@ public class Budget_Model {
 			+ " id INTEGER  PRIMARY KEY,"
 			+ " bank_account_id INTEGER NOT NULL,"
 			+ " balance FLOAT DEFAULT 0.0," + " type VARCHAR(10) NOT NULL,"
-			+ " bank VARCHAR(50) NOT NULL," + " address VARCHAR(80) NOT NULL);";
+			+ " bank VARCHAR(64) NOT NULL,"
+			+ " address VARCHAR(128) NOT NULL);";
 	private String createOwns = "CREATE TABLE IF NOT EXISTS Owns("
 			+ " user_id INT NOT NULL," + " account_id INT NOT NULL,"
 			+ " PRIMARY KEY(user_id, account_id),"
@@ -30,7 +28,7 @@ public class Budget_Model {
 			+ " type VARCHAR(10) NOT NULL," + " address VARCHAR(50) NOT NULL,"
 			+ " UNIQUE(name,type,address));";
 	private String createTransactions = "CREATE TABLE IF NOT EXISTS Transactions("
-			+ "id INTEGER PRIMARY KEY,"
+			+ " id INTEGER PRIMARY KEY,"
 			+ " account_id INT NOT NULL,"
 			+ " provider_id INT NOT NULL,"
 			+ " type VARCHAR(10) NOT NULL,"
@@ -44,8 +42,6 @@ public class Budget_Model {
 			+ " ON UPDATE CASCADE,"
 			+ " FOREIGN KEY (provider_id) REFERENCES Provider(id) "
 			+ " ON DELETE CASCADE " + " ON UPDATE CASCADE);";
-
-	private static Connection con;
 
 	/**
 	 * By using bank account id and type of that bank account Check whether
@@ -63,13 +59,58 @@ public class Budget_Model {
 		con = DriverManager.getConnection("jdbc:sqlite:test.db");
 		Statement select = con.createStatement();
 		String query = "SELECT * FROM Account WHERE bank_account_id = "
-				+ bankAccountId + " AND type = \'" + type.toUpperCase()
+				+ bankAccountId + " AND type = \'" + type.toUpperCase().trim()
 				+ "\' ;";
 		int result = select.executeUpdate(query);
 		con.close();
 		if (result > 0)
 			return true;
 		return false;
+	}
+
+	/**
+	 * For displaying provider name purpose
+	 * 
+	 * @param providerId
+	 * @return
+	 * @throws Exception
+	 */
+	private String getProviderNameByProviderId(int providerId) throws Exception {
+		Class.forName("org.sqlite.JDBC");
+		con = DriverManager.getConnection("jdbc:sqlite:test.db");
+		Statement select = con.createStatement();
+		String query = "SELECT name FROM Provider WHERE id=" + providerId + ";";
+		ResultSet result = select.executeQuery(query);
+		if (result.next()) {
+			String name = result.getString("name");
+			result.close();
+			return name;
+		}
+		throw new Exception("Reading error");
+	}
+
+	/**
+	 * For displaying provider address purpose
+	 * 
+	 * @param providerId
+	 * @return
+	 * @throws Exception
+	 */
+	private String getProviderAddressByProviderId(int providerId)
+			throws Exception {
+		Class.forName("org.sqlite.JDBC");
+		con = DriverManager.getConnection("jdbc:sqlite:test.db");
+		Statement select = con.createStatement();
+		String query = "SELECT address FROM Provider WHERE id=" + providerId
+				+ ";";
+		ResultSet result = select.executeQuery(query);
+		if (result.next()) {
+			String address = result.getString("address");
+			result.close();
+			return address;
+
+		}
+		throw new Exception("Reading error");
 	}
 
 	/**
@@ -86,22 +127,24 @@ public class Budget_Model {
 	private int getAccountIdByUsernameAndType(String username, String type)
 			throws Exception {
 		int userId = this.getUserIdByUsername(username);
-		//System.out.println("TDGJDGHJ" + username +"  "+ type);
-		String query = "SELECT id FROM Account WHERE type = \'" + type.toUpperCase().trim()
-				+ "\' AND id IN("
+		String query = "SELECT id FROM Account WHERE type = \'"
+				+ type.toUpperCase().trim() + "\' AND id IN("
 				+ " SELECT account_id FROM Owns WHERE user_id=" + userId
 				+ " );";
+		System.out.println(query);
 		// Get connection
 		Class.forName("org.sqlite.JDBC");
 		con = DriverManager.getConnection("jdbc:sqlite:test.db");
 		Statement select = con.createStatement();
 		ResultSet result = select.executeQuery(query);
-		result.next();
-		// Get account id
-		int accountId = new Integer(result.getInt("id"));
-		// Close connection
-		con.close();
-		return accountId;
+		if (result.next()) {
+			int accountId = result.getInt("id");
+			// Close connection
+			con.close();
+			System.out.println("This is account id" + accountId);
+			return accountId;
+		}
+		throw new Exception("Error account_id READING");
 	}
 
 	/**
@@ -121,14 +164,16 @@ public class Budget_Model {
 		con = DriverManager.getConnection("jdbc:sqlite:test.db");
 		Statement select = con.createStatement();
 		String query = "SELECT * FROM Account WHERE bank_account_id = "
-				+ bankAccountId + " AND type = \'" + type.toUpperCase()
-				+ "\' ;";
+				+ bankAccountId + " AND type = \'" + type.toUpperCase().trim()
+				+ "\';";
 		ResultSet result = select.executeQuery(query);
-		result.next();
-		int accountId = result.getInt("id");
-		// Close connection to DB
-		con.close();
-		return accountId;
+		if (result.next()) {
+			int accountId = result.getInt("id");
+			// Close connection to DB
+			con.close();
+			return accountId;
+		}
+		throw new Exception("Error account_id READING");
 	}
 
 	/**
@@ -145,13 +190,15 @@ public class Budget_Model {
 		Statement select = con.createStatement();
 		String query = "SELECT id FROM User WHERE username = \'" + username
 				+ "\' ;";
-		//System.out.println(query);
+		System.out.println(query);
 		ResultSet result = select.executeQuery(query);
-		result.next();
-		int userId = new Integer(result.getInt("id"));
-		// Connection close
-		con.close();
-		return userId;
+		if (result.next()) {
+			int userId = result.getInt("id");
+			// Connection close
+			con.close();
+			return userId;
+		}
+		throw new Exception("Error user_id READING");
 	}
 
 	/**
@@ -176,12 +223,33 @@ public class Budget_Model {
 		ResultSet result = select.executeQuery(query);
 		result.next();
 		int num = result.getInt("num");
-		//System.out.println("The num of provider query is " + num);
+		System.out.println("The num of provider query is " + num);
 		// Connection close
 		con.close();
 		if (num > 0)
 			return true;
 		return false;
+	}
+
+	/**
+	 * For displaying payment type purpose
+	 * 
+	 * @param accountId
+	 * @return
+	 * @throws Exception
+	 */
+	private String getPaymentTypeByAccountId(int accountId) throws Exception {
+		Class.forName("org.sqlite.JDBC");
+		con = DriverManager.getConnection("jdbc:sqlite:test.db");
+		Statement select = con.createStatement();
+		String query = "SELECT type FROM Account WHERE id=" + accountId + ";";
+		ResultSet result = select.executeQuery(query);
+		if (result.next()) {
+			String type = result.getString("type");
+			con.close();
+			return type;
+		}
+		throw new Exception("Read ACCOUNT TYPE ERROR");
 	}
 
 	/**
@@ -206,7 +274,7 @@ public class Budget_Model {
 		ResultSet result = select.executeQuery(query);
 		result.next();
 		int providerId = new Integer(result.getInt("id"));
-		//System.out.println("This is provider id " + providerId);
+		System.out.println("This is provider id " + providerId);
 		con.close();
 		return providerId;
 	}
@@ -262,6 +330,7 @@ public class Budget_Model {
 			create.executeUpdate(createProvider);
 			create.executeUpdate(createTransactions);
 			create.executeUpdate(createOwns);
+			// ms=new MessageHashing();
 			con.close();
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
@@ -296,7 +365,8 @@ public class Budget_Model {
 			 * Create CASH Account for user
 			 */
 			String query = "INSERT INTO User (username,password) VALUES(\'"
-					+ username + "\',\'" + password + "\');";
+					+ username + "\',\'" + Encryption.HashToSHA256(password)
+					+ "\');";
 			Statement insert = con.createStatement();
 			if (insert.executeUpdate(query) != 0) {
 				int userId = getUserIdByUsername(username);
@@ -307,7 +377,8 @@ public class Budget_Model {
 				// Add Debit Account
 				addBankAccount(1, userId, (float) 0.0, "DEBIT", "NONE", "NONE");
 				// Add Credit Account
-				addBankAccount(2, userId, (float) 0.0, "CREDIT CARD", "NONE", "NONE");
+				addBankAccount(2, userId, (float) 0.0, "CREDIT CARD", "NONE",
+						"NONE");
 				con.close();
 				return true;
 			} else {
@@ -420,7 +491,9 @@ public class Budget_Model {
 			con = DriverManager.getConnection("jdbc:sqlite:test.db");
 			Statement select = con.createStatement();
 			String query = "SELECT COUNT(*) AS num FROM User WHERE username= \'"
-					+ username + "\' AND password =\'" + password + "\' ;";
+					+ username
+					+ "\' AND password =\'"
+					+ Encryption.HashToSHA256(password) + "\' ;";
 			select = con.createStatement();
 			ResultSet result = select.executeQuery(query);
 			int count = result.getInt("num");
@@ -459,6 +532,7 @@ public class Budget_Model {
 			return false;
 		}
 	}
+
 	/**
 	 * Get user specific transaction (purchase bill etc)
 	 * 
@@ -467,8 +541,8 @@ public class Budget_Model {
 	 * @return
 	 * @throws SQLException
 	 */
-	public ArrayList getTransactionByUsernameAndType(String username, String type)
-			throws Exception {
+	public ArrayList<ArrayList<String>> getTransactionByUsernameAndType(
+			String username, String type) throws Exception {
 		int userId = this.getUserIdByUsername(username);
 		Class.forName("org.sqlite.JDBC");
 		con = DriverManager.getConnection("jdbc:sqlite:test.db");
@@ -480,59 +554,61 @@ public class Budget_Model {
 		select = con.createStatement(ResultSet.TYPE_FORWARD_ONLY,
 				ResultSet.CONCUR_READ_ONLY);
 		ResultSet result = select.executeQuery(query);
-		// result.last();
-		int numRows = 10;
 		result = select.executeQuery(query);
-		//StringBuffer array=new StringBuffer();
-		ArrayList<ArrayList<String>> arrayList=new ArrayList();
-		while(result.next()){
-			ArrayList<String> sub =new ArrayList();
+		ArrayList<ArrayList<String>> arrayList = new ArrayList<ArrayList<String>>();
+		while (result.next()) {
+			int providerId = result.getInt("provider_id");
+			ArrayList<String> sub = new ArrayList<String>();
 			sub.add(result.getString("id"));
-			sub.add(result.getString("account_id"));
-			sub.add(result.getString("provider_id"));
-			sub.add(result.getString("type"));
-			sub.add(result.getString("status"));
+			sub.add(this.getProviderNameByProviderId(providerId));
+			sub.add(this.getProviderAddressByProviderId(providerId));
 			sub.add(result.getString("amount"));
 			sub.add(result.getString("time"));
-			sub.add(result.getString("due_date"));
 			sub.add(result.getString("duration"));
+			sub.add(result.getString("type"));
+			sub.add(result.getString("status"));
+			sub.add(result.getString("due_date"));
+
 			arrayList.add(sub);
 		}
 		con.close();
 		return arrayList;
 	}
+
 	/**
 	 * Display all this user's Transactions
+	 * 
 	 * @param username
 	 * @return
 	 * @throws Exception
 	 */
-	public ArrayList getTransactionByUsername(String username) throws Exception{
+	public ArrayList<ArrayList<String>> getTransactionByUsername(String username)
+			throws Exception {
 		int userId = this.getUserIdByUsername(username);
 		Class.forName("org.sqlite.JDBC");
 		con = DriverManager.getConnection("jdbc:sqlite:test.db");
 		Statement select = con.createStatement();
 		String query = "SELECT * FROM Transactions WHERE account_id IN (SELECT account_id FROM Owns WHERE user_id ="
-				+ userId+");";
+				+ userId + ");";
 		select = con.createStatement(ResultSet.TYPE_FORWARD_ONLY,
 				ResultSet.CONCUR_READ_ONLY);
 		ResultSet result = select.executeQuery(query);
-		// result.last();
-		int numRows = 10;
 		result = select.executeQuery(query);
-		//StringBuffer array=new StringBuffer();
-		ArrayList<ArrayList<String>> arrayList=new ArrayList();
-		while(result.next()){
-			ArrayList<String> sub =new ArrayList();
+		ArrayList<ArrayList<String>> arrayList = new ArrayList<ArrayList<String>>();
+		while (result.next()) {
+			int providerId = result.getInt("provider_id");
+			ArrayList<String> sub = new ArrayList<String>();
 			sub.add(result.getString("id"));
-			sub.add(result.getString("account_id"));
-			sub.add(result.getString("provider_id"));
 			sub.add(result.getString("type"));
-			sub.add(result.getString("status"));
+			sub.add(this.getProviderNameByProviderId(providerId));
+			sub.add(this.getProviderAddressByProviderId(providerId));
 			sub.add(result.getString("amount"));
 			sub.add(result.getString("time"));
-			sub.add(result.getString("due_date"));
 			sub.add(result.getString("duration"));
+			sub.add(this.getPaymentTypeByAccountId(result.getInt("account_id")));
+			sub.add(result.getString("status"));
+			sub.add(result.getString("due_date"));
+
 			arrayList.add(sub);
 		}
 		con.close();
@@ -546,27 +622,30 @@ public class Budget_Model {
 	 * @param status
 	 * @throws SQLException
 	 */
-	public void updateTransactionStatus(int transactionId, String attribute,String value)
-			throws Exception {
+	public void updateTransaction(int transactionId, String attribute,
+			String value) throws Exception {
 		Class.forName("org.sqlite.JDBC");
 		con = DriverManager.getConnection("jdbc:sqlite:test.db");
 		Statement update = con.createStatement();
-		if(!(attribute.equals("provider_id")||attribute.equals("account_id")||attribute.equals("amount"))){
-		
-		String query = "UPDATE Transactions SET "+attribute.trim().toLowerCase()+" = \'"
-				+ value.toUpperCase().trim() + "\' WHERE id = " + transactionId
-				+ ";";
-		update = con.createStatement();
-		update.executeUpdate(query);
-		
-		}else if(attribute.equals("amount")){
+		if (!(attribute.equals("provider_id") || attribute.equals("account_id") || attribute
+				.equals("amount"))) {
+
+			String query = "UPDATE Transactions SET "
+					+ attribute.trim().toLowerCase() + " = \'"
+					+ value.toUpperCase().trim() + "\' WHERE id = "
+					+ transactionId + ";";
+			update = con.createStatement();
+			update.executeUpdate(query);
+
+		} else if (attribute.equals("amount")) {
 			String query = "UPDATE Transactions SET amount = "
 					+ Float.parseFloat(value) + " WHERE id = " + transactionId
 					+ ";";
 			update = con.createStatement();
 			update.executeUpdate(query);
-		}else{
-			String query = "UPDATE Transactions SET "+attribute.trim().toLowerCase()+" = "
+		} else {
+			String query = "UPDATE Transactions SET "
+					+ attribute.trim().toLowerCase() + " = "
 					+ Integer.parseInt(value) + " WHERE id = " + transactionId
 					+ ";";
 			update = con.createStatement();
@@ -594,7 +673,6 @@ public class Budget_Model {
 			float amount, String type, String status, String duration,
 			String dateTime, String dueDate) throws Exception {
 		int providerId = 0;
-		int providerBranchId = 0;
 		int accountId = getAccountIdByUsernameAndType(username, accountType);
 		if (isProviderExist(providerName.toUpperCase().trim(), providerType
 				.toUpperCase().trim(), address.toUpperCase().trim()) == false) {
@@ -657,12 +735,63 @@ public class Budget_Model {
 			con = DriverManager.getConnection("jdbc:sqlite:test.db");
 			Statement insert = con.createStatement();
 			int result = insert.executeUpdate(query);
-			if (result > 0) {
-				con.close();
-				return true;
-			}
 			con.close();
+			if (result > 0)
+				return true;
 			return false;
 		}
+	}
+
+	/**
+	 * For delete expense purpose
+	 * 
+	 * @param transactionId
+	 * @return
+	 * @throws Exception
+	 */
+	public boolean deleteTransactionById(int transactionId) throws Exception {
+		Class.forName("org.sqlite.JDBC");
+		con = DriverManager.getConnection("jdbc:sqlite:test.db");
+		Statement delete = con.createStatement();
+		String query = "DELETE FROM Transactions WHERE id = " + transactionId
+				+ ";";
+		int affectedRow = delete.executeUpdate(query);
+		if (affectedRow == 1)
+			return true;
+		return false;
+	}
+
+	public boolean updateTransaction(int transactionId, String username,
+			String accountType, String providerName, String providerType,
+			String address, String amount, String type, String status,
+			String duration, String dateTime, String dueDate) throws Exception {
+		int providerId = 0;
+		int accountId = this.getAccountIdByUsernameAndType(username,
+				accountType);
+		if (this.isProviderExist(providerName, providerType, address) == false) {
+			providerId = this.addProvider(providerName, providerType, address);
+		} else {
+			providerId = this.getProviderIdByNameTypeAndAddress(providerName,
+					providerType, address);
+		}
+
+		if (accountId == -1) {
+			throw new Exception("Username and account type parameters error");
+		}
+		String query = "UPDATE Transactions " + "SET account_id = " + accountId
+				+ ", " + "provider_id=" + providerId + ", " + "type= \'"
+				+ type.toUpperCase().trim() + "\' , " + "status= \'"
+				+ status.toUpperCase().trim() + " \' ," + "amount="
+				+ Float.valueOf(amount) + " ," + "time= \'" + dateTime.toUpperCase().trim() + "\' ,"
+				+ "duration=\'" + duration.toUpperCase().trim() + "\' , " + "due_date= \'" + dueDate.toUpperCase().trim()
+				+ "\' WHERE id=" + transactionId + ";";
+		Class.forName("org.sqlite.JDBC");
+		con = DriverManager.getConnection("jdbc:sqlite:test.db");
+		Statement update = con.createStatement();
+		int result = update.executeUpdate(query);
+		if (result == 1)
+			return true;
+		return false;
+
 	}
 }
