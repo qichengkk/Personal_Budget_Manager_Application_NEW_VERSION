@@ -1,14 +1,14 @@
-package budget_comp5511.Budget_View;
-
-
 import java.awt.Color;
 import java.awt.Font;
+import java.awt.HeadlessException;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.sql.SQLException;
 
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPasswordField;
 import javax.swing.JSeparator;
 import javax.swing.JTextField;
@@ -16,25 +16,31 @@ import javax.swing.SwingConstants;
 
 
 /**
- * Log in View of this application
+ * Login View of this application
  * @author Qicheng Lao
  *
  */
 public class LoginFrame {
-
+	
+	// login frame components
 	private JFrame frameLogin;
 	private JTextField textFieldName;
 	private JPasswordField passwordFieldPW;
 	private JPasswordField passwordFieldPWConfirm;
+
+	private JButton btnLogin;
+	private JButton btnSignup;
+	// end of login frame components
 	
-	// login frame Variables that are visible to Controller
-	public JButton btnLogin;
-	public JButton btnSignup;
+	
+	public User theuser;
+	public MainFrame mainFrame;
 	
 	/**
 	 * LoginFrame constructor
 	 */
 	public LoginFrame()	{
+		theuser = new User();
 		initialize();
 	}
 
@@ -142,6 +148,59 @@ public class LoginFrame {
 				frameLogin.remove(btnSignup);
 				frameLogin.remove(btnCancelSignup);
 				frameLogin.repaint();
+			}
+		});
+		
+		loginButtonListener();
+	}
+	
+	private void loginButtonListener()
+	{
+		/**
+		 * Login Button Action Listener
+		 */
+		btnLogin.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				try {
+					System.out.println("###########login action###########");
+					String uname = getUsername();
+					String pwd = String.valueOf((getPassword()));
+					if(theuser.loginAction(uname, pwd))
+					{
+						removeFrame();
+						mainFrame = new MainFrame(theuser);
+						mainFrame.setlblWelcomeText("Welcome, " + uname + "!      ");
+						JOptionPane.showMessageDialog(null, "You are logged in!", 
+								"INFORMATION", JOptionPane.INFORMATION_MESSAGE);
+					}
+				} catch (Exception e1) {
+					// TODO Auto-generated catch block
+					e1.printStackTrace();
+				}
+			}
+		});
+		
+		/**
+		 * Signup Button Action Listener
+		 */
+		btnSignup.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				try {
+					System.out.println("###########signup action###########");
+					String uname = getUsername();
+					String pwd = String.valueOf((getPassword()));
+					String con_pwd = String.valueOf(getConfirm_Password_Signup());
+					if(theuser.signupAction(uname, pwd, con_pwd))
+					{
+						removeFrame();
+						initialize();
+						JOptionPane.showMessageDialog(null, "You have signed up! Please log in!", 
+								"INFORMATION", JOptionPane.INFORMATION_MESSAGE);
+					}
+				} catch (Exception e1) {
+					// TODO Auto-generated catch block
+					e1.printStackTrace();
+				}
 			}
 		});
 		

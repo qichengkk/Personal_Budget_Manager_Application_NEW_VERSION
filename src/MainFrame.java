@@ -1,9 +1,5 @@
-package budget_comp5511.Budget_View;
-
-
-import budget_comp5511.Budget_Controller.Budget_Controller;
-
 import java.sql.SQLException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
@@ -51,14 +47,9 @@ import java.awt.SystemColor;
  *
  */
 
-public class Budget_View {
+public class MainFrame {
 
-	private LoginFrame loginFrame;
-	
-	private Budget_Controller thecontroller;
-	
-	private String userName;
-	
+	// main frame components
 	private JFrame frameMain;
 	
 	private JPanel panelTop;
@@ -99,70 +90,29 @@ public class Budget_View {
 	private JButton btnCancelBill;
 	
 	
-	// main frame Variables visible to Controller
-	public JButton btnAddPurchase;
-	public JButton btnAddBill;
-	public JButton btnUpdatePurchase;
-	public JButton btnUpdateBill;
-	public JButton btnDeleteexp;
+	// buttons that have access to database in main frame 
+	private JButton btnAddPurchase;
+	private JButton btnAddBill;
+	private JButton btnUpdatePurchase;
+	private JButton btnUpdateBill;
+	private JButton btnDeleteexp;
+	// end of main frame components
+	
+	private User theuser;
 
 	/**
 	 * View constructor
 	 */
-	public Budget_View(Budget_Controller thecontroller) throws HeadlessException {
+	public MainFrame(User theuser) throws HeadlessException {
 		
-		this.thecontroller = thecontroller;
-		loginInitialize();
-	}
-
-	/**
-	 * Initialize the contents of the loginFrame.
-	 */
-	private void loginInitialize() {
-		
-		loginFrame = new LoginFrame();
-		loginButtonListener();
-	}
-	
-	private void loginButtonListener()
-	{
-		/**
-		 * Login Button Action Listener
-		 */
-		loginFrame.btnLogin.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				try {
-					System.out.println("###########login action###########");
-					loginAction();
-				} catch (SQLException e1) {
-					// TODO Auto-generated catch block
-					e1.printStackTrace();
-				}
-			}
-		});
-		
-		/**
-		 * Signup Button Action Listener
-		 */
-		loginFrame.btnSignup.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				try {
-					System.out.println("###########signup action###########");
-					signupAction();
-				} catch (SQLException e1) {
-					// TODO Auto-generated catch block
-					e1.printStackTrace();
-				}
-			}
-		});
-		
-		
+		this.theuser = theuser;
+		initialize();
 	}
 	
 	/**
 	 * Initialize the contents of the frameMain.
 	 */
-	private void mainInitialize() {
+	private void initialize() {
 		frameMain = new JFrame();
 		frameMain.setBounds(200, 100, 1000, 600);
 		frameMain.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -179,7 +129,7 @@ public class Budget_View {
         frameMain.getContentPane().add(panelTop, BorderLayout.NORTH);
         panelTop.setPreferredSize(new Dimension(0, 50));
         
-        //unused panel for the purpose of layout
+        //unused panel reserved for future use
 		JPanel panelnothing1 = new JPanel();	
 		panelTop.add(panelnothing1);
 		
@@ -218,25 +168,9 @@ public class Budget_View {
         //panelMain.setBackground(Color.WHITE);
         frameMain.getContentPane().add(panelMain, BorderLayout.CENTER);
         
-        
-        /*
-        panelMain.setLayout(new BoxLayout(panelMain, BoxLayout.Y_AXIS));
-		JLabel lblPName = new JLabel("Provider Name:");
-		panelMain.add(lblPName);
-		
-		JTextField textFieldPName = new JTextField();
-		//textFieldDes.setPreferredSize(new Dimension(150,25));
-		panelMain.add(textFieldPName);
-		
-		JLabel lblP = new JLabel("Provider Name:");
-		panelMain.add(lblPName);
-		
-		JButton btnTest = new JButton("Add a Purchase Expense");
-		btnTest.setPreferredSize(new Dimension(180,100));
-		panelMain.add(btnTest);
-		*/
 		
         viewExpense();
+        
         
         //unused panel for the purpose of layout
         JPanel panelnothing2 = new JPanel();	
@@ -300,46 +234,37 @@ public class Budget_View {
         panelSide.add(btnAddexp);
         btnAddexp.setPreferredSize(new Dimension(150,50));
         
-        btnUpdateexp = new JButton("Update the expense");
+        btnUpdateexp = new JButton("Update the status");
         btnUpdateexp.addActionListener(new ActionListener() {
         	public void actionPerformed(ActionEvent e) {
-        		
         		int row = table.getSelectedRow();
-        		if(row != -1)
-        		{
-        			clearMainPanel();			//clear the main panel
-        			String expenseType = (String) table.getValueAt(row, 1);
-        			System.out.println(expenseType);
-        			if(expenseType.equals("PURCHASE"))
-        			{
-        				purchaseView();
-        				updatePurchaseButtons();
-        			}
-        			else
-        			{
-        				billView();
-        				updateBillButtons();
-        			}
-        		}
-        		else
-        			 errormessages("Please select the expense you want to update!");
-        		
-        		
-        		
-        		/*clearMainPanel();
-        		purchaseView();		//open add purchase view
-    			updatePurchaseButtons();
-        		if(selectedExp == null)
-        		{
+        		if(row == -1)
         			JOptionPane.showMessageDialog(null, 
-							"ERROR: Please select an expense!", "ERROR", JOptionPane.ERROR_MESSAGE);
-        			viewExpense();
-        		}
+        					"Please select the expense you want to update!", "ERROR", JOptionPane.ERROR_MESSAGE);
         		else
         		{
-            		//do something
-        		}*/
+        			int expenseID = Integer.parseInt((String) table.getValueAt(row, 0));
+        			String mode = (String) table.getValueAt(row, 7);
+        			String oldstatus = (String) table.getValueAt(row, 8);
+        			String newstatus;
+        			if(oldstatus.equalsIgnoreCase("Paid"))
+        				newstatus = "UNPAID";
+        			else
+        				newstatus = "PAID";
+        			try 
+        			{
+						if(theuser.updateStatus(expenseID, mode, oldstatus, newstatus))
+						{
+							restoreDefault();
+							JOptionPane.showMessageDialog(null, "Expense has been changed!");
+						}
+					} catch (HeadlessException | SQLException e1) {
+						// TODO Auto-generated catch block
+						e1.printStackTrace();
+					}
+        		}
         	}
+        
         });
         panelSide.add(btnUpdateexp);
         btnUpdateexp.setPreferredSize(new Dimension(150,50));
@@ -347,7 +272,25 @@ public class Budget_View {
         btnDeleteexp = new JButton("Delete the expense");
         btnDeleteexp.addActionListener(new ActionListener() {
         	public void actionPerformed(ActionEvent e) {
-        		delete_expense();
+        		int row = table.getSelectedRow();
+        		if(row == -1)
+        			JOptionPane.showMessageDialog(null, 
+        					"Please select the expense you want to delete!", "ERROR", JOptionPane.ERROR_MESSAGE);
+        		else
+        		{
+        			int expenseID = Integer.parseInt((String) table.getValueAt(row, 0));
+        			try 
+        			{
+						if(theuser.deleteExpense(expenseID))
+						{
+							restoreDefault();
+							JOptionPane.showMessageDialog(null, "Expense has been deleted!");
+						}
+					} catch (Exception e1) {
+						// TODO Auto-generated catch block
+						e1.printStackTrace();
+					}
+        		}
         	}
         });
         panelSide.add(btnDeleteexp);
@@ -396,10 +339,9 @@ public class Budget_View {
 	}
 	
 	/**
-	 * get back to view all expenses
+	 * Get back to view all expenses
 	 * @throws SQLException 
 	 */
-
 	private void viewExpense() 
 	{
 		panelMain.setLayout(new BorderLayout(0, 0));
@@ -414,26 +356,15 @@ public class Budget_View {
                 "Location",
                 "Amount",
                 "DateTime","Interval","Payment Mode","Status","Due Date",};
-		/*Object[][] data = {
-			    {"Kathy", "Smith",
-			     "Snowboarding", new Integer(5), new Boolean(false)},
-			    {"John", "Doe",
-			     "Rowing", new Integer(3), new Boolean(true)},
-			    {"Sue", "Black",
-			     "Knitting", new Integer(2), new Boolean(false)},
-			    {"Jane", "White",
-			     "Speed reading", new Integer(20), new Boolean(true)},
-			    {"Joe", "Brown",
-			     "Pool", new Integer(10), new Boolean(false)}
-			};*/
 		try
 		{
-			ArrayList<ArrayList<String>> expenses = thecontroller.all_expense(userName);
+			ArrayList<ArrayList<String>> expenses = theuser.viewExpenses();
 			String[][] data = new String[expenses.size()][10];
-			for(int i = 0; i < expenses.size(); i++)
+			for(int i = 0; i < expenses.size(); ++i)
 			{
-				for(int j = 0; j < 10; j++)
+				for(int j = 0; j < 10; ++j)
 				{
+					//Character.toString(str.charAt(0)).toUpperCase()+str.substring(1)
 					data[i][j] = expenses.get(i).get(j);
 				}
 			}
@@ -453,31 +384,6 @@ public class Budget_View {
 		scrollPane.setViewportView(table);
 		
 		panelMain.validate();
-		
-		/*
-		JPanel panelEXType = new JPanel();
-		panelEXType.setBorder(new TitledBorder(null, "Expense Type", TitledBorder.LEADING, TitledBorder.TOP, null, null));
-		panelTop.add(panelEXType);
-		
-		ButtonGroup buttonGroupEXType = new ButtonGroup();
-		
-		JRadioButton rdbtnAll = new JRadioButton("All");
-		rdbtnAll.setSelected(true);
-		buttonGroupEXType.add(rdbtnAll);
-		panelEXType.add(rdbtnAll);
-		
-		JRadioButton radioPurchase = new JRadioButton("Purchase");
-		buttonGroupEXType.add(radioPurchase);
-		panelEXType.add(radioPurchase);
-		
-		JRadioButton rdbtnBill = new JRadioButton("Bill");
-		buttonGroupEXType.add(rdbtnBill);
-		panelEXType.add(rdbtnBill);
-		
-		panelnothing1.add(panelEXType);
-		
-		panelnothing1.validate();
-		*/
 		
 	}
 
@@ -536,6 +442,7 @@ public class Budget_View {
 		//###############################calendar###############################
 		pickerPDate = new JDateChooser();
 		pickerPDate.setPreferredSize(new Dimension(200,35));
+		//pickerPDate.setDateFormat(new SimpleDateFormat("dd.MM.yyyy"));
 		panelPurchase.add(pickerPDate);
 		
 		JLabel lblPTime = new JLabel("Time:");
@@ -765,23 +672,7 @@ public class Budget_View {
         textFieldBName = new JTextField();
 		textFieldBName.setPreferredSize(new Dimension(200,35));
 		panelBill.add(textFieldBName);
-		/*
-		JLabel lblBLocation = new JLabel("Provider Location:");
-		lblBLocation.setPreferredSize(new Dimension(150,35));
-		panelBill.add(lblBLocation);
-        
-        JTextField textFieldBLocation = new JTextField();
-        textFieldBLocation.setPreferredSize(new Dimension(225,35));
-		panelBill.add(textFieldBLocation);
-		
-		JLabel lblBDate = new JLabel("Date:");
-		lblBDate.setPreferredSize(new Dimension(150,35));
-		panelBill.add(lblBDate);
-        
-        JTextField textFieldBDate = new JTextField();
-        textFieldBDate.setPreferredSize(new Dimension(225,35));
-		panelBill.add(textFieldBDate);
-		*/
+
 		JLabel lblBAmount = new JLabel("Amount:");
 		lblBAmount.setPreferredSize(new Dimension(150,35));
 		panelBill.add(lblBAmount);
@@ -846,27 +737,7 @@ public class Budget_View {
         gbs.weightx = 0;	//set 0 if fixed size
         gbs.weighty = 0;	//set nonzero if size adjustable
         layoutBill.setConstraints(textFieldBName, gbs);
-        /*
-        gbs.gridwidth = 1;	//number of grids, if the last one, then set to 0
-        gbs.weightx = 0;	//set 0 if fixed size
-        gbs.weighty = 0;	//set nonzero if size adjustable
-        layoutBill.setConstraints(lblBLocation, gbs);
-        
-        gbs.gridwidth = 0;	//number of grids, if the last one, then set to 0
-        gbs.weightx = 0;	//set 0 if fixed size
-        gbs.weighty = 0;	//set nonzero if size adjustable
-        layoutBill.setConstraints(textFieldBLocation, gbs);
-        
-        gbs.gridwidth = 1;	//number of grids, if the last one, then set to 0
-        gbs.weightx = 0;	//set 0 if fixed size
-        gbs.weighty = 0;	//set nonzero if size adjustable
-        layoutBill.setConstraints(lblBDate, gbs);
-        
-        gbs.gridwidth = 0;	//number of grids, if the last one, then set to 0
-        gbs.weightx = 0;	//set 0 if fixed size
-        gbs.weighty = 0;	//set nonzero if size adjustable
-        layoutBill.setConstraints(textFieldBDate, gbs);
-        */
+
         gbs.gridwidth = 1;	//number of grids, if the last one, then set to 0
         gbs.weightx = 0;	//set 0 if fixed size
         gbs.weighty = 0;	//set nonzero if size adjustable
@@ -984,7 +855,23 @@ public class Budget_View {
 			public void actionPerformed(ActionEvent e) {
 				try {
 					System.out.println("###########add purchase action###########");
-					addPurchaseAction();
+					String type = "Purchase";
+					String pname = getProviderPName();
+					String paddress = getProviderPLocation();
+					String pdate = "";
+					if(getPDate() != null)
+						pdate = getPDate().toString();
+					String pamount = getPAmount();
+					String pmode = getPMode();
+					String ptime = getPTime();
+					String pstatus = getPStatus();
+					String pdue_date = getPDue();
+					
+					if(theuser.addPurchaseAction(type, pname, paddress, pdate, ptime, pamount, pmode, pstatus, pdue_date))
+					{
+						restoreDefault();
+						JOptionPane.showMessageDialog(null, "You have successfully added purchase transaction!");
+					}
 				} catch (SQLException e1) {
 					// TODO Auto-generated catch block
 					e1.printStackTrace();
@@ -993,8 +880,6 @@ public class Budget_View {
 		});
 		
 		panelPurchase.validate();
-	
-		
 		
 	}
 	/**
@@ -1018,7 +903,20 @@ public class Budget_View {
 			public void actionPerformed(ActionEvent e) {
 				try {
 					System.out.println("###########add bill action###########");
-					addBillAction();
+					String type = "Bill";
+					String bname = getProviderBName();
+					String bamount = getBAmount();
+					String bmode = getBMode();
+					String bstatus = getBStatus();
+					String bdue_date = getBDue();
+					String binterval = getBInterval();
+					String blocation = "Headquaters";
+					
+					if(theuser.addBillAction(type, bname, bamount, bmode, binterval, blocation, bstatus, bdue_date))
+					{
+						restoreDefault();
+						JOptionPane.showMessageDialog(null, "You have successfully added bill transaction!");
+					}
 				} catch (SQLException e1) {
 					// TODO Auto-generated catch block
 					e1.printStackTrace();
@@ -1028,275 +926,17 @@ public class Budget_View {
 		
 		panelBill.validate();
 	}
-	
-	
-	private void updatePurchaseButtons()
-	{
-		JButton btnCancelPurchase = new JButton("Cancel");
-		btnCancelPurchase.addActionListener(new ActionListener() {
-        	public void actionPerformed(ActionEvent e) {
-        		restoreDefault();
-        	}
-        });
-		btnCancelPurchase.setPreferredSize(new Dimension(150,50));
-		panelPurchase.add(btnCancelPurchase);
-		
-		btnUpdatePurchase = new JButton("Update Purchase Expense");
-		btnUpdatePurchase.setPreferredSize(new Dimension(300,50));
-		panelPurchase.add(btnUpdatePurchase);
-		
-		btnUpdatePurchase.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				try {
-					System.out.println("###########update purchase action###########");
-					addPurchaseAction();
-				} catch (SQLException e1) {
-					// TODO Auto-generated catch block
-					e1.printStackTrace();
-				}
-			}
-		});
-		
-		panelPurchase.validate();
-	}
-	
-	private void updateBillButtons()
-	{	
-		JButton btnCancelBill = new JButton("Cancel");
-		btnCancelBill.addActionListener(new ActionListener() {
-        	public void actionPerformed(ActionEvent e) {
-        		restoreDefault();
-        	}
-        });
-		btnCancelBill.setPreferredSize(new Dimension(150,50));
-		panelBill.add(btnCancelBill);
-		
-		btnUpdateBill = new JButton("Update a Bill Expense");
-		btnUpdateBill.setPreferredSize(new Dimension(300,50));
-		panelBill.add(btnUpdateBill);
-		btnUpdateBill.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent e) {
-				try {
-					System.out.println("###########update bill action###########");
-					addBillAction();
-				} catch (SQLException e1) {
-					// TODO Auto-generated catch block
-					e1.printStackTrace();
-				}
-			}
-		});
-		
-		
-		panelBill.validate();
-	}
-	
-	
-	
-	
-	/**
-	 * Check user input valid credentials.
-	 * @param 
-	 * @throws SQLException
-	 */
-	protected void loginAction() throws SQLException{
-		String uname = loginFrame.getUsername();
-		String pwd = String.valueOf((loginFrame.getPassword()));
-		if(uname.equals("") || pwd.equals(""))
-			errormessages("ERROR: Login fields are empty");
-		else if(thecontroller.login_Validate(uname, pwd) == true)
-		{
-			loginFrame.removeFrame();
-			userName = uname;
-			mainInitialize();
-			lblWelcome.setText("Welcome, " + uname + "!      ");
-			JOptionPane.showMessageDialog(null, "You are logged in!", 
-					"INFORMATION", JOptionPane.INFORMATION_MESSAGE);
-		}
-		else
-			errormessages("ERROR:	Invalid Username and Password");
 
-	}
-	/**
-	 * Create User 
-	 * @param 
-	 * @throws HeadlessException
-	 * @throws SQLException
-	 */
-	protected void signupAction() throws HeadlessException, SQLException{
-		String uname = loginFrame.getUsername();
-		String pwd = String.valueOf((loginFrame.getPassword()));
-		String con_pwd = String.valueOf(loginFrame.getConfirm_Password_Signup());
-		if(uname.equals("") || pwd.equals("") || con_pwd.equals(""))
-			errormessages("ERROR: Signup fields are empty");
-		else if(thecontroller.signUp_User(uname, pwd, con_pwd) == true)
-		{
-			loginFrame.removeFrame();
-			loginInitialize();
-				
-			JOptionPane.showMessageDialog(null, "You have signed up! Please log in!", 
-						"INFORMATION", JOptionPane.INFORMATION_MESSAGE);
-		}
-		/*
-		else
-			//##### to do?
-			JOptionPane.showMessageDialog(null, "ERROR: User name already exists or Passaword does not match!", 
-					"ERROR", JOptionPane.ERROR_MESSAGE);
-			*/
-	}
 	
-	protected void addPurchaseAction() throws HeadlessException, SQLException
-	{
-		String type = "Purchase";
-		String pname = getProviderPName();
-		String paddress = getProviderPLocation();
-		String pdate = "";
-		if(getPDate() != null)
-			pdate = getPDate().toString();
-			
-		String pamount = getPAmount();
-		String pmode = getPMode();
-		String ptime = getPTime();
-		String pstatus = getPStatus();
-		String pdue_date = getPDue();
-		
-		if(pname.equals("") ||paddress.equals("") || pdate.equals("") ||pamount.equals("") ||pmode.equals("") ||ptime.equals("")|| pstatus.equals("") || pdue_date.equals(""))
-			errormessages("Purchase Fields are empty!");
-		else if(!isNumeric(pamount)){
-			errormessages("Amount should be numeric!");
-		}
-		else 
-		{
-			if(pmode == "Cash" || pmode == "Debit")
-			{
-				pstatus = "Paid";
-				pdue_date = "00-00-00 00-00-00";
-			}
-			float pamountFloat = Float.valueOf(pamount);
-			try 
-			{
-				System.out.println(pdate);
-				if(thecontroller.add_transaction(userName, pmode, pname,
-					type, paddress, pamountFloat, type,
-					pstatus, "0", pdate + " " +ptime, pdue_date) == true)
-				{
-					restoreDefault();
-					JOptionPane.showMessageDialog(null, "You have successfully added purchase transaction!");
-				}
-				else
-				{
-				
-				}
-			} 
-			catch (Exception e1) 
-			{
-				e1.printStackTrace();
-			}
-		}
-	}
-	
-	protected void addBillAction() throws HeadlessException, SQLException{
-		String type = "Bill";
-		String bname = getProviderBName();
-		String bamount = getBAmount();
-		String bmode = getBMode();
-		String bstatus = getBStatus();
-		String bdue_date = getBDue();
-		String binterval = getBInterval();
-		String blocation = "Headquaters";
-		if(bname.equals("") || bamount.equals("") || bmode.equals("") || bstatus.equals("")|| bdue_date.equals("") ||
-				binterval.equals("") ||blocation.equals(""))
-			errormessages("Bill Fields are empty!");
-		else if(!isNumeric(bamount)){
-			errormessages("Amount should be numeric!");
-		}
-		else 
-		{
-			if(bmode == "Cash" || bmode == "Debit")
-			{
-				bstatus = "Paid";
-				bdue_date = "00-00-00 00-00-00";
-			}
-			try
-			{
-				Float bamountFloat = Float.valueOf(bamount);
-				if(thecontroller.add_transaction(userName, bmode, bname, type, blocation, bamountFloat, type, bstatus, binterval, "0", bdue_date))
-				{
-					restoreDefault();
-					JOptionPane.showMessageDialog(null, "Bill has been payed or added!");
-				}
-				else
-				{
-					JOptionPane.showMessageDialog(null, "Something Wrong happened!!please try again!!!");
-				}
-	
-			}
-			catch(Exception e1)
-			{
-				e1.printStackTrace();
-			}
-		}
-			
-	}
-	
-	protected void delete_expense(){
-		int row = table.getSelectedRow();
-		if(row != -1)
-		{
-			int expenseID = Integer.parseInt((String)table.getValueAt(row, 0));
-			try {
-				if(thecontroller.delete_expense(row, expenseID) == true){
-					restoreDefault();
-					JOptionPane.showMessageDialog(null, "Expense has been deleted!");
-				}
-			} catch (SQLException e1) {
-				// TODO Auto-generated catch block
-				e1.printStackTrace();
-			}
-		}
-		else
-			 errormessages("Please select the expense you want to delete!");
-		
-	}
-	
-	protected void updatePurchaseAction()
-	{
-	}
-	
-	protected void updateBillAction()
-	{
-		
-	}
-	
-
-	/**
-	 * Error Message Dialog
-	 * @param errormessage
-	 */
-	public void errormessages(String errormessage)
-	{
-		JOptionPane.showMessageDialog(null, 
-				errormessage, "ERROR", JOptionPane.ERROR_MESSAGE);
-	}
-	/**
-	 * Check
-	 * @param errormessage
-	 */
-	public boolean isNumeric(String str)
-	{
-		try
-		{
-			float d = Float.valueOf(str);
-		}
-		catch(NumberFormatException e1)
-		{
-			return false;
-		}
-		return true;
-	}//end of numeric method
 	
 	//*************************************************************************************************
 	//**************Getter and Setter methods for expense add and update ******************************
 	//*************************************************************************************************
+	public void setlblWelcomeText(String message)
+	{
+		lblWelcome.setText(message);
+	}
+	
 	/**
 	* Get the Provider Name for purchase expense
 	* @return String
@@ -1313,17 +953,23 @@ public class Budget_View {
 	}
 	/**
 	 * Get the Date for purchase expense
-	 * @return Date
+	 * @return String
 	 */
-	public Date getPDate(){
-		return pickerPDate.getDate();
+	public String getPDate(){
+		if(pickerPDate.getDate() != null)
+			return new SimpleDateFormat("yyyy-MM-dd").format(pickerPDate.getDate());
+		else
+			return "";
 	}
 	/**
 	 * Get the Time for purchase expense
 	 * @return String
 	 */
 	public String getPTime(){
-		return spinner.getValue().toString();
+		if(spinner.getValue() != null)
+			return new SimpleDateFormat("h:mm a").format(spinner.getValue());
+		else
+			return "";
 	}
 	/**
 	 * Get the Amount for purchase expense
@@ -1351,7 +997,10 @@ public class Budget_View {
 	 * @return String
 	 */
 	public String getPDue(){
-		return pickerPDue.getDateFormatString();
+		if(pickerPDue.getDate() != null)
+			return new SimpleDateFormat("yyyy-MM-dd").format(pickerPDue.getDate());
+		else
+			return "";
 	}
 	
 	
@@ -1388,7 +1037,10 @@ public class Budget_View {
 	 * @return String
 	 */
 	public String getBDue(){
-		return pickerBDue.getDateFormatString();
+		if(pickerBDue.getDate() != null)
+			return new SimpleDateFormat("yyyy-MM-dd").format(pickerBDue.getDate());
+		else
+			return "";
 	}
 	/**
 	 * Get the Repetition interval for bill expense
